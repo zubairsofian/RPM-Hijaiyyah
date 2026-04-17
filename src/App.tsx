@@ -135,6 +135,28 @@ const App = () => {
     notes: ''
   });
 
+  // --- PERSISTENCE & REAL-TIME DATA ---
+  const [records, setRecords] = useState(() => {
+    const saved = localStorage.getItem('hijaiyyah_records');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const tpDistribution = [
+    { tp: 'TP1', murid: records.filter(r => r.score === 1).length },
+    { tp: 'TP2', murid: records.filter(r => r.score === 2).length },
+    { tp: 'TP3', murid: records.filter(r => r.score === 3).length },
+    { tp: 'TP4', murid: records.filter(r => r.score === 4).length },
+    { tp: 'TP5', murid: records.filter(r => r.score === 5).length },
+  ];
+
+  const totalMastered = records.length;
+  const averageTP = records.length > 0 
+    ? (records.reduce((acc, curr) => acc + curr.score, 0) / records.length).toFixed(1)
+    : 0;
+  const masteryPercentage = records.length > 0
+    ? Math.round((parseFloat(averageTP as string) / 5) * 100)
+    : 0;
+
   // --- FUNGSI ---
   const openModule = (mod) => {
     setActiveModule(mod);
@@ -187,6 +209,13 @@ const App = () => {
       
       // Oleh kerana mode no-cors menyekat kita dari melihat respons sebenar pelayan,
       // kita beranggapan permintaan berjaya dihantar jika tiada ralat network (catch).
+      
+      // Simpan rekod tempatan untuk dashboard "Real-Time"
+      const newRecord = { ...formData, moduleTitle: activeModule.title, id: Date.now() };
+      const updatedRecords = [newRecord, ...records];
+      setRecords(updatedRecords);
+      localStorage.setItem('hijaiyyah_records', JSON.stringify(updatedRecords));
+
       setIsSaving(false);
       setToastMessage('Rekod Berjaya Disimpan!');
       setTimeout(() => { setToastMessage(''); setCurrentView('module-view'); }, 2000);
@@ -254,33 +283,35 @@ const App = () => {
               </div>
               
               <div className="flex flex-col items-center text-center mb-8">
-                <div className="text-5xl font-extrabold text-[#047857]">25 / 25</div>
-                <div className="text-sm font-semibold text-[#64748b] mt-2">Murid Aktif Terdaftar</div>
+                <div className="text-5xl font-extrabold text-[#047857]">{totalMastered} / {studentList.length}</div>
+                <div className="text-sm font-semibold text-[#64748b] mt-2">Rekod Berjaya Disimpan</div>
                 <div className="w-full h-2 bg-[#f1f5f9] rounded-full mt-6 overflow-hidden">
-                  <div className="w-[84%] h-full bg-[#10b981] rounded-full"></div>
+                  <div className="h-full bg-[#10b981] rounded-full transition-all duration-500" style={{ width: `${masteryPercentage}%` }}></div>
                 </div>
-                <div className="text-[11px] text-[#94a3b8] mt-3 font-bold uppercase tracking-tighter">84% Purata Penguasaan Keseluruhan</div>
+                <div className="text-[11px] text-[#94a3b8] mt-3 font-bold uppercase tracking-tighter">{masteryPercentage}% Purata Penguasaan Semasa</div>
               </div>
 
               <div className="flex-grow space-y-4">
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">Analisis Tahap (TP)</p>
                 <div className="h-[200px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={[
-                      { tp: 'TP1', murid: 1 },
-                      { tp: 'TP2', murid: 3 },
-                      { tp: 'TP3', murid: 12 },
-                      { tp: 'TP4', murid: 7 },
-                      { tp: 'TP5', murid: 2 },
-                    ]}>
-                      <XAxis dataKey="tp" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
-                      <Tooltip 
-                        cursor={{fill: '#f8fafc'}}
-                        contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 700}}
-                      />
-                      <Bar dataKey="murid" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {records.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={tpDistribution}>
+                        <XAxis dataKey="tp" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
+                        <Tooltip 
+                          cursor={{fill: '#f8fafc'}}
+                          contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 700}}
+                        />
+                        <Bar dataKey="murid" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-[#94a3b8] bg-[#f8fafc] rounded-[20px] border border-dashed border-[#e2e8f0] p-4 text-center">
+                      <ClipboardCheck size={32} className="mb-2 opacity-20" />
+                      <p className="text-[10px] uppercase tracking-widest font-bold">Tiada Data Rekod</p>
+                      <p className="text-[9px] mt-1">Sila buat penilaian murid untuk melihat statistik.</p>
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-5 gap-1 text-center">
                   {[1, 2, 3, 4, 5].map(tp => (
